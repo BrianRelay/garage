@@ -276,6 +276,27 @@ function b64decode(b64){
   for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
   return new TextDecoder().decode(bytes);
 }
+let preflightOk=false;
+/* verify the token/repo/branch combo and translate GitHub's vague errors into plain English */
+async function preflight(){
+  if(preflightOk) return;
+  const r=await fetch('https://api.github.com/repos/'+gh.owner+'/'+gh.repo,{headers:ghHeaders()});
+  if(r.status===401) throw new Error('GitHub rejected the token. It may be expired or missing characters — paste it again or generate a new one.');
+  if(r.status===404) throw new Error('GitHub can’t see “'+gh.owner+'/'+gh.repo+'” with this token. Check (1) username and repo name spelling in Settings, and (2) that the token’s “Repository access” is set to “Only select repositories” with '+gh.repo+' selected — not “Public repositories”.');
+  if(!r.ok) throw new Error('GitHub error '+r.status+' while checking the repo.');
+  const meta=await r.json();
+  if(meta.permissions && !meta.permissions.push)
+    throw new Error('The token can read “'+gh.repo+'” but not write to it. Edit the token and set Repository permissions → Contents to “Read and write”.');
+  if(meta.default_branch && (gh.branch||'main')!==meta.default_branch){
+    const b=await fetch('https://api.github.com/repos/'+gh.owner+'/'+gh.repo+'/branches/'+encodeURIComponent(gh.branch||'main'),{headers:ghHeaders()});
+    if(b.status===404){
+      gh.branch=meta.default_branch;
+      localStorage.setItem(LS_GH,JSON.stringify(gh));
+      toast('Branch didn’t exist — switched to “'+meta.default_branch+'”.');
+    }
+  }
+  preflightOk=true;
+}
 async function ghGetFile(path){
   const r=await fetch(ghUrl(path)+'?ref='+encodeURIComponent(gh.branch||'main'),{headers:ghHeaders()});
   if(r.status===404) return null;
@@ -293,6 +314,7 @@ async function pull(){
   if(!gh) return;
   setSync('busy','syncing…');
   try{
+    await preflight();
     const f=await ghGetFile(DATA_PATH);
     if(!f){ if(db) await doPush(); else setSync('ok','synced (empty)'); return; }
     ghSha=f.sha;
@@ -314,6 +336,7 @@ async function doPush(){
   if(!gh||!db) return;
   setSync('busy','saving…');
   try{
+    await preflight();
     await migratePhotos();
     if(ghSha===null){ const f=await ghGetFile(DATA_PATH); ghSha=f?f.sha:undefined; }
     try{
@@ -805,17 +828,21 @@ const A={
       <div class="modal-actions"><button class="btn" onclick="A.closeModal()">Close</button></div>`);
   },
   saveSettings(){
-    const owner=$('#g-owner').value.trim(), repo=$('#g-repo').value.trim(),
-      branch=$('#g-branch').value.trim()||'main', token=$('#g-token').value.trim();
+    let owner=$('#g-owner').value.trim(), repo=$('#g-repo').value.trim();
+    const branch=$('#g-branch').value.trim()||'main', token=$('#g-token').value.trim();
+    // forgive pasting a full URL or "username/repo" into the repo field
+    repo=repo.replace(/^https?:\/\/(www\.)?github\.com\//i,'').replace(/\.git$/,'').replace(/\/+$/,'');
+    if(repo.includes('/')){ const parts=repo.split('/'); owner=parts[0]; repo=parts[1]; }
+    owner=owner.replace(/^https?:\/\/(www\.)?github\.com\//i,'').replace(/^@/,'').replace(/\/+$/,'');
     if(!owner||!repo||!token){ alert('Username, repo, and token are all required.'); return; }
-    gh={owner,repo,branch,token}; ghSha=null;
+    gh={owner,repo,branch,token}; ghSha=null; preflightOk=false;
     localStorage.setItem(LS_GH,JSON.stringify(gh));
     closeModal(); toast('Connecting…'); pull();
   },
   syncNow(){ closeModal(); pull(); },
   disconnect(){
     if(!confirm('Disconnect GitHub sync? Your data stays on this device and in the repo; they just stop syncing.')) return;
-    gh=null; ghSha=null; localStorage.removeItem(LS_GH);
+    gh=null; ghSha=null; preflightOk=false; localStorage.removeItem(LS_GH);
     closeModal(); refreshHeaderPill(); toast('Disconnected.');
   }
 };
