@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Garage</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>">
+<style>
+  :root{
+    --bg:#f5f3ee; --card:#ffffff; --ink:#1d1a16; --muted:#77705f; --line:#e6e1d6;
+    --red:#b03a2e; --amber:#a97612; --green:#3a7d44; --gray:#9a9384;
+    --radius:14px;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;
+    padding-bottom:env(safe-area-inset-bottom)}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:14px 20px;border-bottom:1px solid var(--line);background:var(--bg);
+    position:sticky;top:0;z-index:20}
+  .brand{font-family:var(--serif);font-size:22px;font-weight:600;letter-spacing:.2px;cursor:pointer;text-decoration:none;color:var(--ink)}
+  .hdr-right{display:flex;align-items:center;gap:10px}
+  .sync-pill{font-size:12px;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:6px;
+    padding:5px 10px;border:1px solid var(--line);border-radius:99px;background:var(--card);white-space:nowrap}
+  .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--gray);flex:none}
+  .sync-dot.ok{background:var(--green)} .sync-dot.busy{background:var(--amber)} .sync-dot.err{background:var(--red)}
+  main{max-width:860px;margin:0 auto;padding:24px 20px 80px}
+
+  h1{font-family:var(--serif);font-size:30px;font-weight:600;line-height:1.2}
+  h2{font-family:var(--serif);font-size:20px;font-weight:600;margin-bottom:12px}
+  .sub{color:var(--muted);font-size:13px}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);
+    background:var(--card);color:var(--ink);font-size:14px;font-family:var(--sans);cursor:pointer;text-decoration:none}
+  .btn:hover{border-color:#c9c2b2}
+  .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .btn.small{padding:4px 10px;font-size:12.5px;border-radius:8px}
+  .btn.danger{color:var(--red);border-color:#e3c4bf}
+
+  /* dashboard */
+  .car-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-top:20px}
+  @media(max-width:480px){.car-grid{grid-template-columns:1fr}}
+  .car-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;cursor:pointer;
+    display:flex;flex-direction:column;gap:12px;transition:box-shadow .15s}
+  .car-card:hover{box-shadow:0 4px 18px rgba(60,50,30,.08)}
+  .car-head{display:flex;align-items:center;gap:12px}
+  .mono{width:44px;height:44px;border-radius:12px;color:#fff;display:flex;align-items:center;justify-content:center;
+    font-family:var(--serif);font-size:17px;font-weight:700;flex:none}
+  .car-title{font-family:var(--serif);font-size:19px;font-weight:600;line-height:1.2}
+  .car-meta{font-size:12.5px;color:var(--muted)}
+  .due-list{display:flex;flex-direction:column;gap:5px}
+  .due-line{display:flex;align-items:baseline;gap:8px;font-size:13.5px}
+  .dot{width:8px;height:8px;border-radius:50%;flex:none;position:relative;top:-1px}
+  .dot.red{background:var(--red)} .dot.amber{background:var(--amber)} .dot.green{background:var(--green)} .dot.gray{background:var(--gray)}
+  .due-line .what{font-weight:600}
+  .due-line .when{color:var(--muted);font-size:12.5px}
+  .card-foot{display:flex;gap:16px;border-top:1px solid var(--line);padding-top:10px;font-size:12.5px;color:var(--muted)}
+
+  /* car page */
+  .crumb{font-size:13px;color:var(--muted);text-decoration:none;display:inline-block;margin-bottom:10px}
+  .crumb:hover{color:var(--ink)}
+  .car-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .stat-row{display:flex;gap:12px;flex-wrap:wrap;margin:16px 0 26px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 16px;min-width:120px}
+  .stat .n{font-family:var(--serif);font-size:19px;font-weight:600}
+  .stat .l{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  section{margin-bottom:34px}
+  .sec-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+  .sec-head h2{margin-bottom:0}
+
+  .sched{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+  .sched-row{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .sched-row:last-child{border-bottom:none}
+  .sched-row .what{font-weight:600;min-width:150px}
+  .sched-row .last{color:var(--muted);font-size:12.5px;flex:1;min-width:180px}
+  .pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap}
+  .pill.red{background:#f6e3e0;color:var(--red)} .pill.amber{background:#f4ead3;color:var(--amber)}
+  .pill.green{background:#e2efe4;color:var(--green)} .pill.gray{background:#edeae2;color:var(--muted)}
+
+  .filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  .chip{font-size:12.5px;padding:4px 11px;border-radius:99px;border:1px solid var(--line);background:var(--card);cursor:pointer;color:var(--muted)}
+  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .search{padding:6px 12px;border:1px solid var(--line);border-radius:99px;font-size:13px;background:var(--card);
+    font-family:var(--sans);width:170px;color:var(--ink)}
+  .search:focus{outline:none;border-color:#b9b2a0}
+
+  .entry{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:10px;cursor:pointer}
+  .entry:hover{border-color:#cfc8b8}
+  .e-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .e-date{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;flex:none;width:82px}
+  .e-title{font-weight:600;flex:1;min-width:200px}
+  .e-cost{font-variant-numeric:tabular-nums;font-weight:600;flex:none}
+  .e-meta{display:flex;gap:12px;flex-wrap:wrap;margin-top:3px;margin-left:92px;font-size:12.5px;color:var(--muted)}
+  .e-notes{margin-top:6px;margin-left:92px;font-size:13.5px;color:#4c463b;white-space:pre-line}
+  .e-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px;margin-left:92px}
+  .tag{font-size:11px;padding:2px 8px;border-radius:99px;background:#efece4;color:var(--muted)}
+  .e-photos{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;margin-left:92px}
+  .e-photos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:#eee}
+  @media(max-width:560px){.e-meta,.e-notes,.e-tags,.e-photos{margin-left:0}}
+
+  .details-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+  .dfield{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 13px}
+  .dfield .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .dfield .v{font-size:14px;word-break:break-word}
+  .dfield .v.empty{color:#b6afa0;font-style:italic}
+  .car-notes{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-top:10px;
+    font-size:13.5px;white-space:pre-line;word-break:break-word}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(30,25,15,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;
+    padding:30px 14px;overflow-y:auto}
+  .modal{background:var(--bg);border-radius:16px;width:100%;max-width:560px;padding:22px;margin-bottom:40px}
+  .modal h2{margin-bottom:16px}
+  .f-row{margin-bottom:12px}
+  .f-row label{display:block;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+  .f-row input[type=text],.f-row input[type=date],.f-row input[type=number],.f-row textarea,.f-row select,.f-row input[type=password]{
+    width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-size:14.5px;font-family:var(--sans);
+    background:var(--card);color:var(--ink)}
+  .f-row textarea{min-height:80px;resize:vertical}
+  .f-row input:focus,.f-row textarea:focus,.f-row select:focus{outline:none;border-color:#b9b2a0}
+  .f-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:460px){.f-cols{grid-template-columns:1fr}}
+  .tagpick{display:flex;gap:6px;flex-wrap:wrap}
+  .tagpick label{display:inline-flex;align-items:center;gap:5px;font-size:13px;background:var(--card);
+    border:1px solid var(--line);border-radius:99px;padding:4px 11px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--ink);margin:0}
+  .tagpick label.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .tagpick input{display:none}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+  .modal-actions .spacer{flex:1}
+  .kvrow{display:flex;gap:8px;margin-bottom:8px}
+  .kvrow input{flex:1;padding:7px 10px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;background:var(--card)}
+  .kvrow .rm{border:none;background:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 4px}
+  .schedrow{display:grid;grid-template-columns:1.4fr 1.2fr .8fr .8fr auto;gap:6px;margin-bottom:8px;align-items:center}
+  .schedrow input,.schedrow select{padding:7px 9px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:var(--card);width:100%}
+  .photo-edit{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .photo-edit .ph{position:relative}
+  .photo-edit img{width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:#eee}
+  .photo-edit .rm{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--ink);
+    color:#fff;border:none;font-size:11px;cursor:pointer;line-height:1}
+  .hint{font-size:12px;color:var(--muted);margin-top:4px}
+  .msg{background:#f4ead3;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:none}
+  .msg.show{display:block}
+
+  /* welcome */
+  .welcome{max-width:480px;margin:60px auto;text-align:center}
+  .welcome h1{font-size:34px;margin-bottom:8px}
+  .welcome p{color:var(--muted);margin-bottom:26px}
+  .welcome .btn{width:100%;justify-content:center;margin-bottom:10px;padding:12px}
+
+  /* lightbox */
+  .lightbox{position:fixed;inset:0;background:rgba(20,17,10,.9);z-index:100;display:flex;align-items:center;justify-content:center;cursor:zoom-out;padding:20px}
+  .lightbox img{max-width:100%;max-height:100%;border-radius:8px}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
+    padding:10px 18px;border-radius:99px;font-size:13.5px;z-index:200;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw}
+  .toast.show{opacity:1}
+  .empty-note{color:var(--muted);font-size:14px;padding:20px;text-align:center;background:var(--card);
+    border:1px dashed var(--line);border-radius:var(--radius)}
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="#/">The&nbsp;Garage</a>
+  <div class="hdr-right">
+    <div class="sync-pill" onclick="A.openSettings()"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">local</span></div>
+  </div>
+</header>
+<main id="app"></main>
+<div id="modalRoot"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+'use strict';
+/* ============ constants ============ */
+const LS_DATA='garage.db', LS_GH='garage.gh', DATA_PATH='data/garage.json';
+const VOCAB=[
+  ['oil','Oil change'],['tire-rotation','Tire rotation'],['tires-new','New tires'],['tire-balance','Tire balance'],
+  ['cabin-filter','Cabin filter'],['engine-filter','Engine air filter'],['brakes','Brakes'],['brake-fluid','Brake fluid'],
+  ['battery','Battery'],['wipers','Wipers'],['windshield','Glass'],['spark-plugs','Spark plugs'],['coolant','Coolant'],
+  ['belts','Belts'],['suspension','Suspension'],['repair','Repair'],['bodywork','Bodywork'],['recall','Recall'],
+  ['inspection','Inspection'],['other','Other']
+];
+const TAGL=Object.fromEntries(VOCAB);
+
+/* ============ state ============ */
+let db=null, gh=null, ghSha=null;
+let pushTimer=null, pendingPhotos=[], photoCache={};
+let filterTag=null, searchQ='';
+
+try{ db=JSON.parse(localStorage.getItem(LS_DATA)||'null'); }catch(e){}
+try{ gh=JSON.parse(localStorage.getItem(LS_GH)||'null'); }catch(e){}
+
+/* ============ helpers ============ */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=> 'e'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const fmtMi=n=>n==null?'':Number(n).toLocaleString('en-US');
+const fmtMoney=n=>n==null?'':'$'+Number(n).toLocaleString('en-US',{minimumFractionDigits:(n%1?2:0),maximumFractionDigits:2});
+const fmtDate=(iso,approx)=>{ if(!iso) return '—';
+  const d=new Date(iso+'T12:00:00');
+  return (approx?'~':'')+d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); };
+const fmtDateShort=iso=>{ if(!iso) return '—'; const d=new Date(iso+'T12:00:00');
+  return d.toLocaleDateString('en-US',{month:'short',year:'numeric'}); };
+const todayISO=()=>new Date().toISOString().slice(0,10);
+function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),2600); }
+function carById(id){ return db.cars.find(c=>c.id===id); }
+function monogram(car){ return (car.make||car.name||'?').slice(0,1)+(car.model||'').replace(/[^A-Z0-9]/gi,'').slice(0,1); }
+
+function effMileage(car){
+  let best={miles:null,date:null};
+  if(car.currentMileage!=null && car.currentMileage!=='') best={miles:+car.currentMileage,date:car.currentMileageDate||null};
+  for(const e of car.entries) if(e.mileage!=null && (+e.mileage)>(best.miles==null?-1:best.miles)) best={miles:+e.mileage,date:e.date};
+  return best;
+}
+function lastFor(car,tag){
+  const list=car.entries.filter(e=>(e.tags||[]).includes(tag)).sort((a,b)=>b.date.localeCompare(a.date));
+  return list[0]||null;
+}
+/* status of one schedule item: {code:red|amber|green|gray, text, lastText} */
+function dueStatus(car,item){
+  const last=lastFor(car,item.tag), cur=effMileage(car), now=new Date();
+  if(!last) return {code:'gray',text:'no record yet',lastText:'No record — log one to start tracking.'};
+  let milesLeft=null, daysLeft=null, dueMi=null, dueDate=null;
+  if(item.miles && last.mileage!=null && cur.miles!=null){ dueMi=(+last.mileage)+(+item.miles); milesLeft=dueMi-cur.miles; }
+  if(item.months){ dueDate=new Date(last.date+'T12:00:00'); dueDate.setMonth(dueDate.getMonth()+(+item.months));
+    daysLeft=Math.round((dueDate-now)/86400000); }
+  const lastText='Last: '+fmtDate(last.date,last.dateApprox)+(last.mileage!=null?' at '+fmtMi(last.mileage)+' mi':'');
+  if(milesLeft==null&&daysLeft==null) return {code:'gray',text:'no mileage on last record',lastText};
+  const overdue=(milesLeft!=null&&milesLeft<=0)||(daysLeft!=null&&daysLeft<=0);
+  const soon=(milesLeft!=null&&milesLeft<=1000)||(daysLeft!=null&&daysLeft<=30);
+  let text;
+  if(milesLeft!=null&&milesLeft<=0) text='overdue by '+fmtMi(-milesLeft)+' mi';
+  else if(daysLeft!=null&&daysLeft<=0) text='overdue since '+fmtDateShort(dueDate.toISOString().slice(0,10));
+  else{
+    const parts=[];
+    if(milesLeft!=null) parts.push('in '+fmtMi(milesLeft)+' mi');
+    if(daysLeft!=null) parts.push('by '+fmtDateShort(dueDate.toISOString().slice(0,10)));
+    text='due '+(parts.join(' or ')||'—');
+  }
+  return {code: overdue?'red':(soon?'amber':'green'), text, lastText};
+}
+function attention(car){
+  return (car.schedule||[]).map(it=>({it,st:dueStatus(car,it)}))
+    .filter(x=>x.st.code==='red'||x.st.code==='amber')
+    .sort((a,b)=>(a.st.code==='red'?0:1)-(b.st.code==='red'?0:1));
+}
+
+/* ============ persistence ============ */
+function save(opts){
+  opts=opts||{};
+  db.updatedAt=new Date().toISOString();
+  localStorage.setItem(LS_DATA,JSON.stringify(db));
+  if(!opts.noPush) schedulePush();
+  if(!opts.noRender) render();
+}
+function setSync(code,label){
+  const d=$('#syncDot'); d.className='sync-dot '+(code||'');
+  $('#syncLabel').textContent=label;
+}
+function refreshSyncPill(){
+  if(!gh){ setSync('', 'local only'); return; }
+  setSync('ok','synced');
+}
+
+/* ============ GitHub sync ============ */
+function ghHeaders(){ return {'Authorization':'Bearer '+gh.token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}; }
+function ghUrl(p){ return 'https://api.github.com/repos/'+gh.owner+'/'+gh.repo+'/contents/'+p; }
+function b64encode(str){
+  const bytes=new TextEncoder().encode(str); let bin='';
+  for(let i=0;i<bytes.length;i+=8192) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+8192));
+  return btoa(bin);
+}
+function b64decode(b64){
+  const bin=atob(b64.replace(/\n/g,'')); const bytes=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+async function ghGetFile(path){
+  const r=await fetch(ghUrl(path)+'?ref='+encodeURIComponent(gh.branch||'main'),{headers:ghHeaders()});
+  if(r.status===404) return null;
+  if(!r.ok) throw new Error('GitHub read failed ('+r.status+')');
+  return r.json();
+}
+async function ghPutFile(path,contentB64,sha,message){
+  const body={message:message||'Update garage data',content:contentB64,branch:gh.branch||'main'};
+  if(sha) body.sha=sha;
+  const r=await fetch(ghUrl(path),{method:'PUT',headers:ghHeaders(),body:JSON.stringify(body)});
+  if(!r.ok){ const t=await r.text(); throw new Error('GitHub write failed ('+r.status+'): '+t.slice(0,160)); }
+  return r.json();
+}
+async function pull(){
+  if(!gh) return;
+  setSync('busy','syncing…');
+  try{
+    const f=await ghGetFile(DATA_PATH);
+    if(!f){ if(db) await doPush(); else setSync('ok','synced (empty)'); return; }
+    ghSha=f.sha;
+    const remote=JSON.parse(b64decode(f.content));
+    if(!db || (remote.updatedAt||'')>(db.updatedAt||'')){
+      db=remote; localStorage.setItem(LS_DATA,JSON.stringify(db));
+      setSync('ok','synced'); render();
+    } else if((db.updatedAt||'')>(remote.updatedAt||'')){
+      await doPush();
+    } else setSync('ok','synced');
+  }catch(err){ console.error(err); setSync('err','sync error'); toast('Sync error: '+err.message); }
+}
+function schedulePush(){
+  if(!gh) { refreshSyncPill(); return; }
+  clearTimeout(pushTimer); setSync('busy','saving…');
+  pushTimer=setTimeout(doPush,1200);
+}
+async function doPush(){
+  if(!gh||!db) return;
+  setSync('busy','saving…');
+  try{
+    await migratePhotos();
+    if(ghSha===null){ const f=await ghGetFile(DATA_PATH); ghSha=f?f.sha:undefined; }
+    try{
+      const res=await ghPutFile(DATA_PATH,b64encode(JSON.stringify(db,null,2)),ghSha,'Update garage data');
+      ghSha=res.content.sha;
+    }catch(e){ // sha conflict → refetch sha and retry once
+      const f=await ghGetFile(DATA_PATH); ghSha=f?f.sha:undefined;
+      const res=await ghPutFile(DATA_PATH,b64encode(JSON.stringify(db,null,2)),ghSha,'Update garage data');
+      ghSha=res.content.sha;
+    }
+    setSync('ok','synced');
+  }catch(err){ console.error(err); setSync('err','sync error'); toast('Sync error: '+err.message); }
+}
+/* move any inline (dataUri) photos into the repo once sync is configured */
+async function migratePhotos(){
+  if(!gh) return;
+  for(const car of db.cars) for(const e of car.entries){
+    for(let i=0;i<(e.photos||[]).length;i++){
+      const p=e.photos[i];
+      if(p.dataUri){
+        const path='photos/'+car.id+'/'+e.id+'-'+Date.now().toString(36)+'-'+i+'.jpg';
+        const b64=p.dataUri.split(',')[1];
+        await ghPutFile(path,b64,undefined,'Add photo');
+        e.photos[i]={path:path,name:p.name||'photo.jpg'};
+      }
+    }
+  }
+  localStorage.setItem(LS_DATA,JSON.stringify(db));
+}
+async function fetchPhoto(path){
+  if(photoCache[path]) return photoCache[path];
+  const r=await fetch(ghUrl(path)+'?ref='+encodeURIComponent(gh.branch||'main'),
+    {headers:{...ghHeaders(),'Accept':'application/vnd.github.raw+json'}});
+  if(!r.ok) throw new Error('photo fetch failed');
+  const blob=await r.blob(); const url=URL.createObjectURL(blob);
+  photoCache[path]=url; return url;
+}
+function hydratePhotos(){
+  document.querySelectorAll('img[data-ph]').forEach(img=>{
+    const path=img.getAttribute('data-ph');
+    if(!gh){ img.alt='photo (connect sync to view)'; return; }
+    fetchPhoto(path).then(u=>{img.src=u;}).catch(()=>{ img.alt='photo unavailable'; });
+  });
+}
+
+/* ============ image compression ============ */
+function compressImage(file){
+  return new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload=()=>{ const img=new Image();
+      img.onload=()=>{
+        const MAX=1400; let w=img.width,h=img.height;
+        if(Math.max(w,h)>MAX){ const s=MAX/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s); }
+        const c=document.createElement('canvas'); c.width=w; c.height=h;
+        c.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(c.toDataURL('image/jpeg',0.8));
+      };
+      img.onerror=reject; img.src=fr.result; };
+    fr.onerror=reject; fr.readAsDataURL(file);
+  });
+}
+
+/* ============ views ============ */
+function render(){
+  refreshHeaderPill();
+  const hash=location.hash||'#/';
+  if(!db){ renderWelcome(); return; }
+  const mCar=hash.match(/^#\/car\/(.+)$/);
+  if(mCar && carById(mCar[1])) renderCar(carById(mCar[1]));
+  else renderDashboard();
+  hydratePhotos();
+}
+function refreshHeaderPill(){
+  if(!gh) setSync('','local only');
+}
+window.addEventListener('hashchange',()=>{ filterTag=null; searchQ=''; render(); });
+
+function renderWelcome(){
+  $('#app').innerHTML=`
+  <div class="welcome">
+    <h1>The Garage</h1>
+    <p>A permanent home for your cars’ maintenance history — mileage, services, costs, receipts, and what’s due next.</p>
+    <button class="btn primary" onclick="A.importFile()">Import my data file (garage-seed.json)</button>
+    <button class="btn" onclick="A.openSettings()">Connect GitHub sync</button>
+    <button class="btn" onclick="A.startFresh()">Start fresh (empty)</button>
+  </div>`;
+}
+
+function renderDashboard(){
+  const cards=db.cars.map(car=>{
+    const m=effMileage(car), att=attention(car).slice(0,3);
+    const spend=car.entries.reduce((s,e)=>s+(e.cost||0),0);
+    const okAll=att.length===0;
+    return `<div class="car-card" onclick="location.hash='#/car/${car.id}'">
+      <div class="car-head">
+        <div class="mono" style="background:${esc(car.accent||'#555')}">${esc(monogram(car))}</div>
+        <div>
+          <div class="car-title">${esc(car.name)}</div>
+          <div class="car-meta">${m.miles!=null?fmtMi(m.miles)+' mi · as of '+fmtDateShort(m.date):'mileage unknown'}</div>
+        </div>
+      </div>
+      <div class="due-list">
+        ${okAll?'<div class="due-line"><span class="dot green"></span><span class="when">Nothing flagged — all tracked items look current.</span></div>':
+          att.map(x=>`<div class="due-line"><span class="dot ${x.st.code}"></span>
+            <span class="what">${esc(x.it.label)}</span><span class="when">${esc(x.st.text)}</span></div>`).join('')}
+      </div>
+      <div class="card-foot">
+        <span>${car.entries.length} records</span>
+        <span>${spend?fmtMoney(spend)+' logged':''}</span>
+      </div>
+    </div>`;
+  }).join('');
+  $('#app').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px">
+      <div><h1>Your cars</h1><div class="sub">Tap a car for its history, details, and what’s due.</div></div>
+      <button class="btn" onclick="A.editCar(null)">+ Add car</button>
+    </div>
+    <div class="car-grid">${cards}</div>`;
+}
+
+function entryHtml(car,e){
+  const tags=(e.tags||[]).map(t=>`<span class="tag">${esc(TAGL[t]||t)}</span>`).join('');
+  const meta=[];
+  if(e.mileage!=null) meta.push(fmtMi(e.mileage)+' mi');
+  if(e.shop) meta.push(esc(e.shop));
+  const photos=(e.photos||[]).map(p=> p.dataUri
+    ? `<img src="${p.dataUri}" onclick="event.stopPropagation();A.lightbox(this.src)">`
+    : `<img data-ph="${esc(p.path)}" onclick="event.stopPropagation();A.lightboxEl(this)">`).join('');
+  return `<div class="entry" onclick="A.editEntry('${car.id}','${e.id}')">
+    <div class="e-top">
+      <span class="e-date">${fmtDate(e.date,e.dateApprox)}</span>
+      <span class="e-title">${esc(e.title)}</span>
+      ${e.cost!=null&&e.cost!==''?`<span class="e-cost">${fmtMoney(e.cost)}</span>`:''}
+    </div>
+    ${meta.length?`<div class="e-meta">${meta.map(m=>`<span>${m}</span>`).join('')}</div>`:''}
+    ${e.notes?`<div class="e-notes">${esc(e.notes)}</div>`:''}
+    ${tags?`<div class="e-tags">${tags}</div>`:''}
+    ${photos?`<div class="e-photos">${photos}</div>`:''}
+  </div>`;
+}
+
+function renderCar(car){
+  const m=effMileage(car);
+  const spend=car.entries.reduce((s,e)=>s+(e.cost||0),0);
+  const entries=[...car.entries].sort((a,b)=>b.date.localeCompare(a.date));
+  const lastSvc=entries[0];
+  const usedTags=[...new Set(car.entries.flatMap(e=>e.tags||[]))];
+  const q=searchQ.trim().toLowerCase();
+  const shown=entries.filter(e=>{
+    if(filterTag && !(e.tags||[]).includes(filterTag)) return false;
+    if(q){ const blob=(e.title+' '+(e.shop||'')+' '+(e.notes||'')).toLowerCase(); if(!blob.includes(q)) return false; }
+    return true;
+  });
+  const sched=(car.schedule||[]).map(it=>{
+    const st=dueStatus(car,it);
+    return `<div class="sched-row">
+      <span class="what">${esc(it.label)}</span>
+      <span class="pill ${st.code}">${esc(st.text)}</span>
+      <span class="last">${esc(st.lastText)}${it.miles||it.months?' · every '+[it.miles?fmtMi(it.miles)+' mi':'',it.months?it.months+' mo':''].filter(Boolean).join(' / '):''}</span>
+    </div>`;
+  }).join('');
+  const fields=[
+    ['VIN',car.vin],['License plate',car.plate],['Color',car.color],
+    ['Insurance company',car.insurance&&car.insurance.company],['Policy #',car.insurance&&car.insurance.policy],
+    ['Insurance phone',car.insurance&&car.insurance.phone],['Insurance renewal',car.insurance&&car.insurance.renewal],
+    ['Purchased',car.purchase&&(car.purchase.date?fmtDate(car.purchase.date):'')],
+    ['Purchase price',car.purchase&&(car.purchase.price!=null?fmtMoney(car.purchase.price):'')],
+    ['Purchased from',car.purchase&&car.purchase.from]
+  ];
+  const dfields=fields.map(([l,v])=>`<div class="dfield"><div class="l">${l}</div><div class="v ${v?'':'empty'}">${esc(v||'not set')}</div></div>`).join('');
+  const specs=(car.specs||[]).map(s=>`<div class="dfield"><div class="l">${esc(s.k)}</div><div class="v">${esc(s.v)}</div></div>`).join('');
+  $('#app').innerHTML=`
+    <a class="crumb" href="#/">← All cars</a>
+    <div class="car-hero">
+      <div style="display:flex;gap:14px;align-items:center">
+        <div class="mono" style="background:${esc(car.accent||'#555')};width:52px;height:52px;font-size:20px">${esc(monogram(car))}</div>
+        <div><h1>${esc(car.name)}</h1>
+        ${car.vin?`<div class="sub">VIN ${esc(car.vin)}</div>`:''}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="A.updateMileage('${car.id}')">Update mileage</button>
+        <button class="btn primary" onclick="A.editEntry('${car.id}',null)">+ Log service</button>
+      </div>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><div class="n">${m.miles!=null?fmtMi(m.miles):'—'}</div><div class="l">miles · ${m.date?fmtDateShort(m.date):'unknown'}</div></div>
+      <div class="stat"><div class="n">${lastSvc?fmtDateShort(lastSvc.date):'—'}</div><div class="l">last service</div></div>
+      <div class="stat"><div class="n">${spend?fmtMoney(spend):'—'}</div><div class="l">logged spend</div></div>
+      <div class="stat"><div class="n">${car.entries.length}</div><div class="l">records</div></div>
+    </div>
+
+    <section>
+      <div class="sec-head"><h2>What’s due</h2>
+        <button class="btn small" onclick="A.editSchedule('${car.id}')">Edit intervals</button></div>
+      ${sched?`<div class="sched">${sched}</div>`:'<div class="empty-note">No maintenance schedule yet — add intervals to start tracking.</div>'}
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>Service history</h2></div>
+      <div class="filters">
+        <input class="search" placeholder="Search…" value="${esc(searchQ)}"
+          oninput="A.search('${car.id}',this.value)">
+        ${usedTags.map(t=>`<span class="chip ${filterTag===t?'on':''}" onclick="A.filter('${car.id}','${t}')">${esc(TAGL[t]||t)}</span>`).join('')}
+      </div>
+      <div id="entryList">
+      ${shown.length?shown.map(e=>entryHtml(car,e)).join(''):'<div class="empty-note">No records match.</div>'}
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><h2>Vehicle details</h2>
+        <button class="btn small" onclick="A.editCar('${car.id}')">Edit details</button></div>
+      <div class="details-grid">${dfields}${specs}</div>
+      ${(car.purchase&&car.purchase.notes)?`<div class="car-notes"><strong>Purchase notes:</strong> ${esc(car.purchase.notes)}</div>`:''}
+      ${car.notes?`<div class="car-notes">${esc(car.notes)}</div>`:''}
+    </section>`;
+}
+
+/* ============ modals ============ */
+function openModal(html){ $('#modalRoot').innerHTML=`<div class="overlay" onclick="if(event.target===this)A.closeModal()"><div class="modal">${html}</div></div>`; }
+function closeModal(){ $('#modalRoot').innerHTML=''; pendingPhotos=[]; }
+
+/* ============ actions ============ */
+const A={
+  closeModal,
+  lightbox(src){ $('#modalRoot').innerHTML=`<div class="lightbox" onclick="A.closeModal()"><img src="${src}"></div>`; },
+  lightboxEl(img){ if(img.src) A.lightbox(img.src); },
+  filter(carId,t){ filterTag=(filterTag===t?null:t); renderCar(carById(carId)); hydratePhotos(); },
+  search(carId,v){ searchQ=v; const car=carById(carId);
+    const q=v.trim().toLowerCase();
+    const entries=[...car.entries].sort((a,b)=>b.date.localeCompare(a.date)).filter(e=>{
+      if(filterTag && !(e.tags||[]).includes(filterTag)) return false;
+      if(q){ const blob=(e.title+' '+(e.shop||'')+' '+(e.notes||'')).toLowerCase(); if(!blob.includes(q)) return false; }
+      return true;});
+    $('#entryList').innerHTML=entries.length?entries.map(e=>entryHtml(car,e)).join(''):'<div class="empty-note">No records match.</div>';
+    hydratePhotos(); },
+
+  startFresh(){ db={version:1,updatedAt:new Date().toISOString(),cars:[]}; save(); },
+
+  importFile(){
+    const inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
+    inp.onchange=()=>{ const f=inp.files[0]; if(!f) return;
+      const fr=new FileReader();
+      fr.onload=()=>{ try{
+          const data=JSON.parse(fr.result);
+          if(!data.cars) throw new Error('Not a garage data file.');
+          db=data; save(); toast('Imported '+db.cars.length+' cars, '+db.cars.reduce((s,c)=>s+c.entries.length,0)+' records.');
+        }catch(e){ alert('Could not import: '+e.message); } };
+      fr.readAsText(f); };
+    inp.click();
+  },
+  exportFile(){
+    const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download='garage-backup-'+todayISO()+'.json'; a.click();
+  },
+
+  updateMileage(carId){
+    const car=carById(carId); const m=effMileage(car);
+    const v=prompt('Current mileage for '+car.name+':', m.miles!=null?m.miles:'');
+    if(v==null||v.trim()==='') return;
+    const n=parseInt(v.replace(/[^\d]/g,''),10);
+    if(isNaN(n)){ alert('Please enter a number.'); return; }
+    car.currentMileage=n; car.currentMileageDate=todayISO(); save(); toast('Mileage updated.');
+  },
+
+  /* ----- entry form ----- */
+  editEntry(carId,entryId){
+    const car=carById(carId);
+    const e=entryId?car.entries.find(x=>x.id===entryId):null;
+    pendingPhotos=[];
+    const tags=(e&&e.tags)||[];
+    openModal(`
+      <h2>${e?'Edit record':'Log service'} — ${esc(car.name)}</h2>
+      <div class="f-cols">
+        <div class="f-row"><label>Date</label><input type="date" id="f-date" value="${e?e.date:todayISO()}"></div>
+        <div class="f-row"><label>Mileage</label><input type="number" id="f-mileage" placeholder="e.g. 114500" value="${e&&e.mileage!=null?e.mileage:''}"></div>
+      </div>
+      <div class="f-row"><label>What was done</label><input type="text" id="f-title" placeholder="e.g. Oil change + tire rotation" value="${esc(e?e.title:'')}"></div>
+      <div class="f-cols">
+        <div class="f-row"><label>Shop</label><input type="text" id="f-shop" value="${esc(e?e.shop||'':'')}"></div>
+        <div class="f-row"><label>Cost ($)</label><input type="number" step="0.01" id="f-cost" value="${e&&e.cost!=null?e.cost:''}"></div>
+      </div>
+      <div class="f-row"><label>Categories</label>
+        <div class="tagpick">${VOCAB.map(([t,l])=>`
+          <label class="${tags.includes(t)?'on':''}"><input type="checkbox" value="${t}" ${tags.includes(t)?'checked':''}
+            onchange="this.parentElement.classList.toggle('on',this.checked)">${l}</label>`).join('')}
+        </div></div>
+      <div class="f-row"><label>Notes</label><textarea id="f-notes">${esc(e?e.notes||'':'')}</textarea></div>
+      <div class="f-row"><label>Photos / receipts</label>
+        <div class="photo-edit" id="f-photos">
+          ${e?(e.photos||[]).map((p,i)=>`<div class="ph" data-keep="${i}">
+              ${p.dataUri?`<img src="${p.dataUri}">`:`<img data-ph="${esc(p.path)}">`}
+              <button class="rm" onclick="this.parentElement.remove()">✕</button></div>`).join(''):''}
+        </div>
+        <button class="btn small" style="margin-top:8px" onclick="A.pickPhotos()">+ Add photos</button>
+        <div class="hint">${gh?'Photos are saved to your private GitHub repo.':'Photos are stored locally until you connect GitHub sync (Settings).'}</div>
+      </div>
+      <div class="modal-actions">
+        ${e?`<button class="btn danger" onclick="A.deleteEntry('${carId}','${e.id}')">Delete</button>`:''}
+        <span class="spacer"></span>
+        <button class="btn" onclick="A.closeModal()">Cancel</button>
+        <button class="btn primary" onclick="A.saveEntry('${carId}','${e?e.id:''}')">Save</button>
+      </div>`);
+    hydratePhotos();
+  },
+  pickPhotos(){
+    const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; inp.multiple=true;
+    inp.onchange=async()=>{
+      for(const f of inp.files){
+        try{ const dataUri=await compressImage(f);
+          pendingPhotos.push({dataUri,name:f.name});
+          const div=document.createElement('div'); div.className='ph'; div.dataset.pending=pendingPhotos.length-1;
+          div.innerHTML=`<img src="${dataUri}"><button class="rm" onclick="this.parentElement.remove()">✕</button>`;
+          $('#f-photos').appendChild(div);
+        }catch(e){ alert('Could not read image '+f.name); }
+      }};
+    inp.click();
+  },
+  async saveEntry(carId,entryId){
+    const car=carById(carId);
+    const date=$('#f-date').value, title=$('#f-title').value.trim();
+    if(!date||!title){ alert('Date and description are required.'); return; }
+    const mileage=$('#f-mileage').value?parseInt($('#f-mileage').value,10):null;
+    const shop=$('#f-shop').value.trim();
+    const cost=$('#f-cost').value!==''?parseFloat($('#f-cost').value):null;
+    const notes=$('#f-notes').value.trim();
+    const tags=[...document.querySelectorAll('.tagpick input:checked')].map(i=>i.value);
+    const old=entryId?car.entries.find(x=>x.id===entryId):null;
+    // photos: keep the existing ones still in the DOM, add pending ones still in the DOM
+    const photos=[];
+    document.querySelectorAll('#f-photos .ph').forEach(div=>{
+      if(div.dataset.keep!=null && old) photos.push(old.photos[+div.dataset.keep]);
+      else if(div.dataset.pending!=null) photos.push(pendingPhotos[+div.dataset.pending]);
+    });
+    const entry={id:entryId||uid(),date,title,tags,photos};
+    if(old&&old.dateApprox&&old.date===date) entry.dateApprox=true;
+    if(mileage!=null&&!isNaN(mileage)) entry.mileage=mileage;
+    if(shop) entry.shop=shop;
+    if(cost!=null&&!isNaN(cost)) entry.cost=cost;
+    if(notes) entry.notes=notes;
+    if(old) car.entries[car.entries.indexOf(old)]=entry; else car.entries.push(entry);
+    closeModal(); save(); toast(old?'Record updated.':'Service logged.');
+  },
+  deleteEntry(carId,entryId){
+    if(!confirm('Delete this record?')) return;
+    const car=carById(carId);
+    car.entries=car.entries.filter(e=>e.id!==entryId);
+    closeModal(); save(); toast('Record deleted.');
+  },
+
+  /* ----- car form ----- */
+  editCar(carId){
+    const car=carId?carById(carId):null;
+    const ins=(car&&car.insurance)||{}, pur=(car&&car.purchase)||{};
+    openModal(`
+      <h2>${car?'Edit '+esc(car.name):'Add a car'}</h2>
+      <div class="f-row"><label>Name</label><input type="text" id="c-name" placeholder="e.g. 2018 Volvo XC60" value="${esc(car?car.name:'')}"></div>
+      <div class="f-cols">
+        <div class="f-row"><label>VIN</label><input type="text" id="c-vin" value="${esc(car?car.vin||'':'')}"></div>
+        <div class="f-row"><label>License plate</label><input type="text" id="c-plate" value="${esc(car?car.plate||'':'')}"></div>
+      </div>
+      <div class="f-row"><label>Color / trim</label><input type="text" id="c-color" value="${esc(car?car.color||'':'')}"></div>
+      <div class="f-cols">
+        <div class="f-row"><label>Insurance company</label><input type="text" id="c-insco" value="${esc(ins.company||'')}"></div>
+        <div class="f-row"><label>Policy #</label><input type="text" id="c-inspol" value="${esc(ins.policy||'')}"></div>
+        <div class="f-row"><label>Insurance phone</label><input type="text" id="c-insph" value="${esc(ins.phone||'')}"></div>
+        <div class="f-row"><label>Renewal date</label><input type="text" id="c-insrn" placeholder="e.g. 2026-11-01" value="${esc(ins.renewal||'')}"></div>
+      </div>
+      <div class="f-cols">
+        <div class="f-row"><label>Purchase date</label><input type="date" id="c-pdate" value="${esc(pur.date||'')}"></div>
+        <div class="f-row"><label>Purchase price ($)</label><input type="number" id="c-pprice" value="${pur.price!=null?pur.price:''}"></div>
+      </div>
+      <div class="f-row"><label>Purchased from</label><input type="text" id="c-pfrom" value="${esc(pur.from||'')}"></div>
+      <div class="f-row"><label>Purchase notes</label><textarea id="c-pnotes">${esc(pur.notes||'')}</textarea></div>
+      <div class="f-row"><label>Specs &amp; part numbers</label><div id="c-specs">
+        ${((car&&car.specs)||[]).map(s=>`<div class="kvrow"><input placeholder="Label" value="${esc(s.k)}"><input placeholder="Value" value="${esc(s.v)}"><button class="rm" onclick="this.parentElement.remove()">✕</button></div>`).join('')}
+      </div><button class="btn small" onclick="A.addSpecRow()">+ Add spec</button></div>
+      <div class="f-row"><label>Notes</label><textarea id="c-notes">${esc(car?car.notes||'':'')}</textarea></div>
+      <div class="modal-actions">
+        ${car?`<button class="btn danger" onclick="A.deleteCar('${car.id}')">Delete car</button>`:''}
+        <span class="spacer"></span>
+        <button class="btn" onclick="A.closeModal()">Cancel</button>
+        <button class="btn primary" onclick="A.saveCar('${car?car.id:''}')">Save</button>
+      </div>`);
+  },
+  addSpecRow(){
+    const div=document.createElement('div'); div.className='kvrow';
+    div.innerHTML=`<input placeholder="Label"><input placeholder="Value"><button class="rm" onclick="this.parentElement.remove()">✕</button>`;
+    $('#c-specs').appendChild(div);
+  },
+  saveCar(carId){
+    const name=$('#c-name').value.trim();
+    if(!name){ alert('Name is required.'); return; }
+    let car=carId?carById(carId):null;
+    if(!car){
+      car={id:'c'+Date.now().toString(36),name:'',accent:['#2F5D50','#7D2E2E','#3E4C6D','#6B5B3E','#5A3E6B','#3E6B69'][db.cars.length%6],
+        insurance:{},purchase:{},specs:[],notes:'',currentMileage:null,currentMileageDate:'',
+        schedule:[{label:'Oil change',tag:'oil',miles:5000,months:6},{label:'Tire rotation',tag:'tire-rotation',miles:5000,months:6},
+          {label:'Cabin air filter',tag:'cabin-filter',miles:15000,months:12},{label:'Engine air filter',tag:'engine-filter',miles:30000,months:24},
+          {label:'Wiper blades',tag:'wipers',miles:null,months:12}],
+        entries:[]};
+      db.cars.push(car);
+    }
+    car.name=name; car.vin=$('#c-vin').value.trim(); car.plate=$('#c-plate').value.trim(); car.color=$('#c-color').value.trim();
+    car.insurance={company:$('#c-insco').value.trim(),policy:$('#c-inspol').value.trim(),phone:$('#c-insph').value.trim(),renewal:$('#c-insrn').value.trim()};
+    car.purchase={date:$('#c-pdate').value,price:$('#c-pprice').value!==''?parseFloat($('#c-pprice').value):null,
+      from:$('#c-pfrom').value.trim(),notes:$('#c-pnotes').value.trim()};
+    car.specs=[...document.querySelectorAll('#c-specs .kvrow')].map(r=>{
+      const [k,v]=r.querySelectorAll('input'); return {k:k.value.trim(),v:v.value.trim()};
+    }).filter(s=>s.k||s.v);
+    car.notes=$('#c-notes').value.trim();
+    closeModal(); save(); toast('Saved.');
+  },
+  deleteCar(carId){
+    const car=carById(carId);
+    if(!confirm('Delete '+car.name+' and all its '+car.entries.length+' records? This cannot be undone (except via a backup or GitHub history).')) return;
+    db.cars=db.cars.filter(c=>c.id!==carId);
+    closeModal(); location.hash='#/'; save(); toast('Car deleted.');
+  },
+
+  /* ----- schedule editor ----- */
+  editSchedule(carId){
+    const car=carById(carId);
+    openModal(`
+      <h2>Maintenance intervals — ${esc(car.name)}</h2>
+      <div class="hint" style="margin-bottom:12px">Each item is matched to history records by its category. Leave miles or months blank to skip that trigger.</div>
+      <div class="schedrow" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">
+        <span>Label</span><span>Category</span><span>Miles</span><span>Months</span><span></span></div>
+      <div id="s-rows">
+        ${(car.schedule||[]).map(it=>A._schedRowHtml(it)).join('')}
+      </div>
+      <button class="btn small" onclick="A.addSchedRow()">+ Add item</button>
+      <div class="modal-actions">
+        <button class="btn" onclick="A.closeModal()">Cancel</button>
+        <button class="btn primary" onclick="A.saveSchedule('${carId}')">Save</button>
+      </div>`);
+  },
+  _schedRowHtml(it){
+    it=it||{label:'',tag:'other',miles:'',months:''};
+    return `<div class="schedrow">
+      <input placeholder="Label" value="${esc(it.label)}">
+      <select>${VOCAB.map(([t,l])=>`<option value="${t}" ${it.tag===t?'selected':''}>${l}</option>`).join('')}</select>
+      <input type="number" placeholder="mi" value="${it.miles!=null?it.miles:''}">
+      <input type="number" placeholder="mo" value="${it.months!=null?it.months:''}">
+      <button class="rm" style="border:none;background:none;color:var(--muted);cursor:pointer" onclick="this.parentElement.remove()">✕</button>
+    </div>`;
+  },
+  addSchedRow(){ $('#s-rows').insertAdjacentHTML('beforeend',A._schedRowHtml()); },
+  saveSchedule(carId){
+    const car=carById(carId);
+    car.schedule=[...document.querySelectorAll('#s-rows .schedrow')].map(r=>{
+      const inputs=r.querySelectorAll('input'), sel=r.querySelector('select');
+      return {label:inputs[0].value.trim(),tag:sel.value,
+        miles:inputs[1].value!==''?parseInt(inputs[1].value,10):null,
+        months:inputs[2].value!==''?parseInt(inputs[2].value,10):null};
+    }).filter(it=>it.label);
+    closeModal(); save(); toast('Intervals updated.');
+  },
+
+  /* ----- settings ----- */
+  openSettings(){
+    const g=gh||{owner:'',repo:'',branch:'main',token:''};
+    openModal(`
+      <h2>Settings &amp; sync</h2>
+      <div class="hint" style="margin-bottom:14px">Connect a <strong>private</strong> GitHub repo to sync your data and photos across devices. Every save becomes a commit — your full history is kept forever. See the README for the 10-minute setup.</div>
+      <div class="f-cols">
+        <div class="f-row"><label>GitHub username</label><input type="text" id="g-owner" placeholder="your-username" value="${esc(g.owner)}"></div>
+        <div class="f-row"><label>Data repo name</label><input type="text" id="g-repo" placeholder="garage-data" value="${esc(g.repo)}"></div>
+      </div>
+      <div class="f-cols">
+        <div class="f-row"><label>Branch</label><input type="text" id="g-branch" value="${esc(g.branch||'main')}"></div>
+        <div class="f-row"><label>Access token</label><input type="password" id="g-token" placeholder="github_pat_…" value="${esc(g.token)}"></div>
+      </div>
+      <div class="hint">The token is stored only in this browser, never in the synced data.</div>
+      <div class="modal-actions" style="justify-content:flex-start">
+        <button class="btn primary" onclick="A.saveSettings()">Save &amp; sync</button>
+        ${gh?`<button class="btn" onclick="A.syncNow()">Sync now</button>
+        <button class="btn danger" onclick="A.disconnect()">Disconnect</button>`:''}
+      </div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:18px 0">
+      <div class="f-row"><label>Backup</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" onclick="A.exportFile()">Export data file</button>
+          <button class="btn" onclick="A.importFile()">Import data file</button>
+        </div>
+        <div class="hint">Export a JSON backup any time. Import replaces what’s on this device.</div>
+      </div>
+      <div class="modal-actions"><button class="btn" onclick="A.closeModal()">Close</button></div>`);
+  },
+  saveSettings(){
+    const owner=$('#g-owner').value.trim(), repo=$('#g-repo').value.trim(),
+      branch=$('#g-branch').value.trim()||'main', token=$('#g-token').value.trim();
+    if(!owner||!repo||!token){ alert('Username, repo, and token are all required.'); return; }
+    gh={owner,repo,branch,token}; ghSha=null;
+    localStorage.setItem(LS_GH,JSON.stringify(gh));
+    closeModal(); toast('Connecting…'); pull();
+  },
+  syncNow(){ closeModal(); pull(); },
+  disconnect(){
+    if(!confirm('Disconnect GitHub sync? Your data stays on this device and in the repo; they just stop syncing.')) return;
+    gh=null; ghSha=null; localStorage.removeItem(LS_GH);
+    closeModal(); refreshHeaderPill(); toast('Disconnected.');
+  }
+};
+window.A=A;
+
+/* ============ boot ============ */
+render();
+if(gh) pull();
+</script>
+</body>
+</html>
